@@ -106,6 +106,19 @@ public class Cryptography {
 
 
         try {
+
+            /**
+             * get the instance of the Cipher and specify
+             * algorithm = DES
+             * mode = ECB
+             * no padding
+             */
+            des = Cipher.getInstance("DES/ECB/NoPadding");
+            /**
+             * initiate the Cipher in encryption mode, with the left key
+             */
+            des.init(Cipher.ENCRYPT_MODE, skeyl);
+
             for (int i = 0; i < TransactionData.length; i += 8) {
                 /**
                  * copy the first block of 8 bytes from transaction data into the temp array
@@ -116,17 +129,7 @@ public class Cryptography {
                  * xor the temp data with the ARQC
                  */
                 ARQC = Utilities.xor(current, ARQC);
-                /**
-                 * get the instance of the Cipher and specify
-                 * algorithm = DES
-                 * mode = ECB
-                 * no padding
-                 */
-                des = Cipher.getInstance("DES/ECB/NoPadding");
-                /**
-                 * initiate the Cipher in encryption mode, with the left key
-                 */
-                des.init(Cipher.ENCRYPT_MODE, skeyl);
+
                 /**
                  * ARQC is encryption of the xored value
                  * then continue looping on the data till the end of the 8 bytes blocks
@@ -161,6 +164,67 @@ public class Cryptography {
 
         }
         return ARQC;
+    }
+
+
+    public static byte[] computeARPC (byte[] ARQC, byte[] sKey, byte[] ARC){
+
+        byte[] ARPC  = new byte[] { (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+                (byte) 0, (byte) 0, (byte) 0, (byte) 0 };
+
+        System.out.println();
+
+        byte[] temp = Utilities.xor(ARC, ARQC);
+        byte[] TDESKey = new byte[24];
+        System.arraycopy(sKey, 0, TDESKey, 0, 16);
+        System.arraycopy(sKey, 0,TDESKey,16,8);
+
+        /**
+         * generate SecretKeySpec object from the Key data
+
+         */
+
+        SecretKeySpec skey = new SecretKeySpec(TDESKey, "DESede");
+       /**
+         * create Cipher
+         */
+        Cipher TDES;
+
+        try {
+            /**
+             * get the instance of the Cipher and specify
+             * algorithm = TDES
+             * mode = ECB
+             * no padding
+             */
+            TDES = Cipher.getInstance("DESede/ECB/NoPadding");
+
+            /**
+             * initiate the Cipher in encryption mode, with the left key
+             */
+            TDES.init(Cipher.ENCRYPT_MODE, skey);
+
+            /**
+             * encrypt the final block using the left key. this is the ARQC
+             */
+            ARPC = TDES.doFinal(temp);
+
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        } catch (IllegalBlockSizeException e) {
+            e.printStackTrace();
+        } catch (BadPaddingException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        }
+        return ARPC;
+
+
+
     }
 
 

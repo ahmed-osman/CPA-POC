@@ -8,15 +8,15 @@ package com.qi.cpa;
  * Bouncy-Castle or HSM device.
  *
  * 2. provide a step by step guide for the functionality of the CPA application to the developer
-  * who will port it to the enterprise application
-  *
-  *
-* Application functionality:
-* 1. generate session key out of the master key
-* 2. compute the ARQC
-* 3. compute the ARPC
-*
-*
+ * who will port it to the enterprise application
+ *
+ *
+ * Application functionality:
+ * 1. generate session key out of the master key
+ * 2. compute the ARQC
+ * 3. compute the ARPC // TODO
+ *
+ *
  */
 
 public class Main {
@@ -32,6 +32,11 @@ public class Main {
 
         String strMKey = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF";
         String strATC = "00B4";
+        String strARC = "3030";
+
+        String ATCpadding = "000000000000";
+
+        strARC = strARC + ATCpadding;
 
         /*
 
@@ -41,7 +46,9 @@ public class Main {
         */
 
         byte[] baMKEY = Utilities.hexStringToByteArray(strMKey);
-        byte[] baATC = Utilities.hexStringToByteArray(strATC);
+        byte[] baARC = Utilities.hexStringToByteArray(strARC);
+
+
 
         /*
         EMV 4.2 session key generation method:
@@ -63,12 +70,10 @@ public class Main {
 
 
         String strAddLeft = "F00000000000";
-        byte[] addLeft = Utilities.hexStringToByteArray(strAddLeft);
-        byte[] baATCleft = Utilities.concat(baATC, addLeft);
-
         String strAddRight = "0F0000000000";
-        byte[] addRight = Utilities.hexStringToByteArray(strAddRight);
-        byte[] baATCright = Utilities.concat(baATC, addRight);
+        String strDiversificationData = strATC+strAddLeft+strATC+strAddRight;
+
+        byte[] baDiversificationData = Utilities.hexStringToByteArray(strDiversificationData);
 
         /**
          * the transaction data is extracted from field 55 from the ISO message in live scenario
@@ -77,11 +82,6 @@ public class Main {
         String strTransactionData = "0000000010000000000000000710000000000007101302050030901B6A3C00005503A4A082";
         byte[] baTransactionData = Utilities.hexStringToByteArray(strTransactionData);
 
-        /**
-         * baDiversificationData has the full data should be encrypted by MK to create the session key
-         */
-
-        byte[] baDiversificationData = Utilities.concat(baATCleft, baATCright);
 
 
         try{
@@ -112,7 +112,18 @@ public class Main {
                 System.out.printf("%X \t", a);
             }
 
+            /**
+             * After successfully genrating the ARQC, we need to create the ARPC
+             * the algorithm is to append the ARC with six bytes of 0x00 then encrypt the result
+             * using TDES algorithm and the same session key
+             */
+            byte[] ARPC = Cryptography.computeARPC(ARQC, SessionKey, baARC);
 
+            System.out.print("ARPC Value is: ");
+
+            for (byte a : ARPC){
+                System.out.printf("%X \t", a);
+            }
 
         } catch (Exception e){
 
